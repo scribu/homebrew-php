@@ -1,25 +1,30 @@
 require 'formula'
 
 class WpCli < Formula
-  homepage 'https://github.com/wp-cli/wp-cli'
-  head 'https://github.com/wp-cli/wp-cli.git'
-  url 'https://github.com/wp-cli/wp-cli/archive/v0.13.0.tar.gz'
-  sha1 '330ad9d7ed5cd0199e1bf80e010c8a79af43141a'
+  homepage 'https://wp-cli.org'
+  url 'https://github.com/wp-cli/wp-cli/releases/download/v0.13.0/wp-cli.phar'
+  sha1 'e5a6cfaf739bc5f382d89ddfc650c4bc756374fb'
+  version '0.13.0'
 
   option 'without-bash-completion', "Don't install bash completion"
-  option 'without-package-index', "Don't add package index repository (http://wp-cli.org/package-index)"
 
-  depends_on 'composer'
+  resource 'bash-completion' do
+    url 'https://raw.github.com/wp-cli/wp-cli/v0.13.0/utils/wp-completion.bash'
+    sha1 'e019b047ddf964be12b92680acb96028c212b98d'
+  end
 
   def install
-    system "#{HOMEBREW_PREFIX}/bin/composer install"
-    prefix.install Dir['*']
+    mv "wp-cli.phar", "wp-cli-#{version}.phar"
+    libexec.install "wp-cli-#{version}.phar"
+    sh = libexec + "wp"
+    sh.write("#!/usr/bin/env bash\n\n${WP_CLI_PHP:-php} $WP_CLI_PHP_ARGS #{libexec}/wp-cli-#{version}.phar $*")
+    chmod 0755, sh
+    bin.install_symlink sh
 
     unless build.without? 'bash-completion'
-      (prefix + 'etc/bash_completion.d').install "#{prefix}/utils/wp-completion.bash"
-    end
-    unless build.without? 'package-index'
-      system "#{HOMEBREW_PREFIX}/bin/composer config --file='#{prefix}/composer.json' repositories.wp-cli composer http://wp-cli.org/package-index/"
+      resource('bash-completion').stage {
+        (prefix + 'etc/bash_completion.d').install "wp-completion.bash"
+      }
     end
   end
 
